@@ -11,9 +11,9 @@ for i = 1:100
             w_min = w;
             err_min = err;
         end    
-        if (strcmp(method, "order"))
+        if (strcmp(method, 'order'))
             r = min(find(Y != y));
-        elseif (strcmp(method, "random"))
+        elseif (strcmp(method, 'random'))
             r = randsample(find(Y != y), 1);
         end
         w = w + ratio * y(r) * X(r, :);
