@@ -1,5 +1,7 @@
 pkg load statistics
 
+% 13-15
+% linear regression
 N = 1000;
 x = 2 * rand(N, 2) - 1;
 noise = rand(N, 1);
@@ -16,11 +18,13 @@ yt = sign(X * w);
 printf('Linear regress error is %f\n', sum(yt != y) / N);
 pause;
 
-% nonlinear feature transform
+% feature transform
 X = [ones(N, 1) x x(:, 1) .* x(:, 2) x.^2];
 w = pinv(X' * X) * X' * y;
 yt = sign(X * w);
-printf('Quadratic regress error is %f\n', sum(yt != y) / N);
+printf('Quadratic feature transform error is %f\n', sum(yt != y) / N);
+pause;
+printf('Plot fit on data\n');
 hold on;
 [x1 x2] = meshgrid(-1:.01:1);
 z = w(1) + w(2) * x1 + w(3) * x2 + w(4) * (x1 .* x2) + w(5) * x1.^2 + w(6) * x2.^2;
