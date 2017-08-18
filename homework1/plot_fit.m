@@ -1,8 +1,7 @@
-function plot_fit(w)
-[x y] = meshgrid(-10:.1:10);
-z = w(1) + w(2) * x + w(3) * y;
-ind = find(z == 0);
+function plot_fit(f, w, xlim, ylim)
+[x y] = meshgrid(xlim, ylim);
+z = f(w, x, y);
 hold on;
-plot(x(ind), y(ind));
+contour(x, y, z, [0 0], 'LineWidth', 2);
 hold off;
-endfunction
+end

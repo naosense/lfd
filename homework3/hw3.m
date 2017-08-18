@@ -17,6 +17,10 @@ w = pinv(X' * X) * X' * y;
 yt = sign(X * w);
 printf('Linear regress error is %f\n', sum(yt != y) / N);
 pause;
+printf('Plot linear fit on data\n');
+f = @(w, x, y) w(1) + w(2) * x + w(3) * y;
+plot_fit(f, w, -1:.01:1, -1:.01:1);
+pause;
 
 % feature transform
 X = [ones(N, 1) x x(:, 1) .* x(:, 2) x.^2];
@@ -24,9 +28,11 @@ w = pinv(X' * X) * X' * y;
 yt = sign(X * w);
 printf('Quadratic feature transform error is %f\n', sum(yt != y) / N);
 pause;
-printf('Plot fit on data\n');
-hold on;
-[x1 x2] = meshgrid(-1:.01:1);
-z = w(1) + w(2) * x1 + w(3) * x2 + w(4) * (x1 .* x2) + w(5) * x1.^2 + w(6) * x2.^2;
-contour(x1, x2, z, [0 0], 'r-', 'LineWidth', 2);
-hold off;
+printf('Plot quadratic fit on data\n');
+f = @(w, x, y) w(1) + w(2) * x + w(3) * y + w(4) * (x .* y) + w(5) * x.^2 + w(6) * y.^2;
+plot_fit(f, w, -1:.01:1, -1:.01:1);
+% hold on;
+% [x1 x2] = meshgrid(-1:.01:1);
+% z = w(1) + w(2) * x1 + w(3) * x2 + w(4) * (x1 .* x2) + w(5) * x1.^2 + w(6) * x2.^2;
+% contour(x1, x2, z, [0 0], 'r-', 'LineWidth', 2);
+% hold off;
