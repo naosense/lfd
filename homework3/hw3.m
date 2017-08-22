@@ -1,4 +1,6 @@
 pkg load statistics
+load hw3_train.dat
+load hw3_test.dat
 
 % 13-15
 % linear regression
@@ -36,3 +38,27 @@ plot_fit(f, w, -1:.01:1, -1:.01:1);
 % z = w(1) + w(2) * x1 + w(3) * x2 + w(4) * (x1 .* x2) + w(5) * x1.^2 + w(6) * x2.^2;
 % contour(x1, x2, z, [0 0], 'r-', 'LineWidth', 2);
 % hold off;
+
+% logistic regress
+alpha = .01;
+T = 2000;
+x = hw3_train(:, 1:end - 1);
+y = hw3_train(:, end);
+N = size(y, 1);
+X = [ones(N, 1) x];
+w = zeros(size(X, 2), 1);
+err_array = zeros(T, 1);
+for i = 1:T
+    w = w + alpha * -1 * get_deriv(w, X, y, mod(i, N) + 1); 
+    [h p] = hyperthesis(w, X);
+    err_array(i) = sum(h != y) / N;
+end
+plot(1:T, err_array, '+');
+x = hw3_test(:, 1:end - 1);
+y = hw3_test(:, end);
+N = size(y, 1);
+X = [ones(N, 1) x];
+[h p] = hyperthesis(w, X);
+err = sum(h != y) / N;
+printf('Logistic regression error is %f\n', err);
+
