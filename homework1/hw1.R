@@ -36,7 +36,7 @@ for (i in 1:2000) {
   set.seed(i)
   result <- pocket(hw1_18_train[, 1:4], v(hw1_18_train, 5), 1, "random")
   x <- hw1_18_test[, 1:4]
-  X <- cbind(matrix(rep(1, nrow(x))), x)
+  X <- cbind(as.matrix(rep(1, nrow(x))), x)
   y <- v(hw1_18_test, 5)
   w <- result[[1]]
   err <- sum(sign(X %*% w) != y) / nrow(x)

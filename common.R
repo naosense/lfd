@@ -24,7 +24,7 @@ plot_fit <- function(f, x, y) {
     yk <- unique(y);
     for (i in seq_along(yk)) {
       ind <- y == yk[i]
-      points(x[ind, 1, drop = F], x[ind, 2, drop = F], pch = i);
+      points(v(x, 1)[ind], v(x, 2)[ind], pch = i, col = i);
     }
   }
 

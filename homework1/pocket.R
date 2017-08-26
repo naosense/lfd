@@ -1,8 +1,8 @@
 pocket <- function(x, y, ratio, method) {
   rs <- nrow(x)
   cs <- ncol(x)
-  X <- cbind(matrix(rep(1, rs)), x)
-  w <- w_min <- matrix(rep(0, cs + 1))
+  X <- cbind(as.matrix(rep(1, rs)), x)
+  w <- w_min <- as.matrix(rep(0, cs + 1))
   err <- err_min <- 10
   for (i in 1:100) {
     if (any((Y <- sign(X %*% w)) != y)) {
