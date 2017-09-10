@@ -12,29 +12,29 @@ x <- matrix(2 * runif(2 * N) - 1, nrow = N)
 noise <- as.matrix(runif(N))
 noise[noise <= .1] <- -1
 noise[noise > .1] <- 1
-y <- sign(v(x, 1) ^ 2 + v(x, 2) ^ 2 - .6) * noise
-positive <- which(y >= 0)
-negtive <- which(y < 0)
+# y <- sign(v(x, 1) ^ 2 + v(x, 2) ^ 2 - .6) * noise
+y <- (v(x, 1) ^ 2 + v(x, 2) ^ 2 - .6) * noise
+yy <- sign(y)
 
 X <- cbind(rep(1, N), x)
 w <- solve(t(X) %*% X) %*% t(X) %*% y
 yt <- sign(X %*% w)
-message("Linear regress error is ", sum(yt != y) / N)
+message("Linear regress error is ", sum(yt != yy) / N)
 pause()
 message("Plot linear fit on data")
 f <- function(x1, x2) w[1] + w[2] * x1 + w[3] * x2
-plot_fit(f, x, y)
+plot_fit(f, x, yy)
 pause()
 
 # feature transform
 X <- cbind(rep(1, N), x, v(x, 1) * v(x, 2), x ^ 2)
 w <- solve(t(X) %*% X) %*% t(X) %*% y
 yt <- sign(X %*% w)
-message("Quadratic feature transform error is ", sum(yt != y) / N)
+message("Linear regression after feature transform error is ", sum(yt != yy) / N)
 pause()
-message("Plot quadratic fit on data")
+message("Plot feature transform line fit on data")
 f <- function(x1, x2) w[1] + w[2] * x1 + w[3] * x2 + w[4] * x1 * x2 + w[5] * x1 ^2 + w[6] * x2 ^ 2
-plot_fit(f, x, y)
+plot_fit(f, x, yy)
 pause()
 
 # logistic regression
@@ -50,7 +50,7 @@ w <- as.matrix(rep(0, n))
 err_array <- rep(0, T)
 for (i in 1:T) {
   cat("=")
-  w <- w + alpha * -1 * get_deriv(w, X, y, "")
+  w <- w + alpha * -1 * get_deriv(w, X, y)
   yp <- predict(w, X)
   err_array[i] <- sum(yp != y) / m
 }

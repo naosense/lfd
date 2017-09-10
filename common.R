@@ -11,24 +11,36 @@ v <- function(M, n) {
   M[, n, drop = F]
 }
 
-plot_fit <- function(f, x, y) {
+plot_fit <- function(f, x, y, fit = T, formula = T, ...) {
+  er <- deparse(body(f), width.cutoff = 500)
+  w_len <- length(unlist(strsplit(er, split = "\\+")))
+  for (i in 1:w_len) {
+    er <- gsub(paste("w\\[",i, "\\]", sep = ""), round(w[i], digits = 2), er)
+  }
   n <- ncol(x)
   if (n == 1) {
     xlim <- lim(x)
-    plot(xlim, f(xlim), "l", lwd = 2)
+    if (fit) {
+      plot(xlim, f(xlim), "l", lwd = 2)
+    }
     points(x, y, pch = 20, col = colors[1])
   } else if (n == 2) {
     x1lim <- lim(x[, 1, drop = F])
     x2lim <- lim(x[, 2, drop = F])
     z <- outer(x1lim, x2lim, f);
-    contour(x1lim, x2lim, z, levels = c(0), drawlabels = F, lwd = 2);
+    if (fit) {
+      contour(x1lim, x2lim, z, levels = c(0), drawlabels = F, lwd = 2);
+    }
     yk <- unique(y);
     for (i in seq_along(yk)) {
       ind <- y == yk[i]
-      points(v(x, 1)[ind], v(x, 2)[ind], pch = 20, col = colors[i]);
+      plot(v(x, 1)[ind], v(x, 2)[ind], pch = 20, col = colors[i]);
+      par()
     }
   }
-
+  if (formula) {
+    mtext(parse(text = paste("hat(y)==", er)), adj = 0.2, line = -2)
+  }
 }
 
 lim <- function(x) {
