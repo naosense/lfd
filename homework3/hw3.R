@@ -23,7 +23,7 @@ message("Linear regress error is ", sum(yt != yy) / N)
 pause()
 message("Plot linear fit on data")
 f <- function(x1, x2) w[1] + w[2] * x1 + w[3] * x2
-plot_fit(f, x, yy)
+plot_fit(f, x, yy, fit = F, main = "Linear regress", xlab = "x", ylab = "y")
 pause()
 
 # feature transform
@@ -34,7 +34,7 @@ message("Linear regression after feature transform error is ", sum(yt != yy) / N
 pause()
 message("Plot feature transform line fit on data")
 f <- function(x1, x2) w[1] + w[2] * x1 + w[3] * x2 + w[4] * x1 * x2 + w[5] * x1 ^2 + w[6] * x2 ^ 2
-plot_fit(f, x, yy)
+plot_fit(f, x, yy, fit = F)
 pause()
 
 # logistic regression
