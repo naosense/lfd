@@ -206,13 +206,16 @@ random_forest <- function(data, ts = 10, feature_count = as.integer(sqrt(ncol(da
     vote <- function(trees, x) {
       sapply(trees, function(tree) predict_tree(tree, x))
     }
+    if (length(trees) <= 0) {
+      return("NULL")
+    }
     N <- nrow(data)
-    sapply(1:N, function(r) marjority(vote(trees, data[r, ])))
+    sapply(1:N, function(i) marjority(vote(trees, h(data, i))))
   }
 
   predict_tree_in <- function(tree, data) {
     N <- nrow(data)
-    sapply(1:N, function(x) predict_tree(tree, data[x, ]))
+    sapply(1:N, function(i) predict_tree(tree, h(data, i)))
   }
 
   N <- nrow(data)
@@ -221,31 +224,49 @@ random_forest <- function(data, ts = 10, feature_count = as.integer(sqrt(ncol(da
   train <- setdiff(1:N, test)
   y <- data[, M]
   trees <- rep(list(NULL), ts)
-  oob_errors <- rep(0, ts)
-  importance <- matrix(rep(0, ts * (M - 1)), nrow = ts)
+  # oob_errors <- rep(0, ts)
+  oob_matrix <- matrix(rep(0, N * ts), nrow = N)
+  importance <- rep(0, M - 1)
+  proximities <- matrix(rep(0, N * N), nrow = N)
   yt <- rep(0, ts)
-  invisible(capture.output(pb <- txtProgressBar(min = 0, max = 100, width = 80, style = 3)))
+  invisible(capture.output(pb <- txtProgressBar(min = 0, max = 100, width = 80,
+    style = 3)))
+  plot(0, type = "n", ylab = "OOB Error", xlim = c(0, 100), ylim = c(0, 1))
   for (i in 1:ts) {
     row_selected <- sample(train, length(train), replace = T)
     oob <- setdiff(train, row_selected)
     trees[[i]] <- cart_decision_tree(data[row_selected, ])
-    oob_errors[i] <- sum(predict_tree_in(trees[[i]], data[oob, ]) != y[oob])/length(oob)
-    # oob_permute <- sample(oob, length(oob))
-    importance[i, ] <- sapply(1:(M - 1), function(c) {
-      data_permute <- data[oob, ]
-      data_permute[, c] <- sample(data_permute[, c], length(oob))
-      oob_error_permute <- sum(predict_tree_in(trees[[i]], data_permute) !=
-        y[oob])/length(oob)
-      abs(oob_errors[i] - oob_error_permute)
-    })
-    setTxtProgressBar(pb, i / ts * 100)
+    oob_matrix[row_selected, i] <- 1
+    # oob_errors[i] <- sum(predict_tree_in(trees[[i]], data[oob, ]) !=
+    # y[oob])/length(oob) oob_permute <- sample(oob, length(oob)) points(i,
+    # oob_errors[i])
+    setTxtProgressBar(pb, i/ts * 100)
   }
 
-  oob_error <- sum(oob_errors)/length(oob_errors)
+  oob_error <- sum(sapply(train, function(i) {
+    predict_forest(trees[oob_matrix[i, ] == 0], h(data, i)) != y[i]
+  }))/length(train)
+
+  importance <- sapply(1:(M - 1), function(j) {
+    data[train, j] <- sample(data[train, j], length(train))
+    oob_error_perm <- sum(sapply(train, function(i) {
+      predict_forest(trees[oob_matrix[i, ] == 0], h(data, i)) != y[i]
+    }))/length(train)
+    abs(oob_error_perm - oob_error)
+  })
+
+  predict_matrix <- vapply(trees, function(t) predict_tree_in(t, data), FUN.VALUE = character(N))
+
+  for (i in 1:N) {
+    for (j in i:N) {
+      proximities[i, j] <- proximities[j, i] <-  length(intersect(predict_matrix[i, ], predict_matrix[j, ]))
+    }
+
+  }
+
+
   test_error <- sum(predict_forest(trees, data[test, ]) != y[test])/length(test)
-  plot(1:ts, oob_errors)
-  importance <- apply(importance, 2, sum)/ts
   names(importance) <- names(data)[1:(M - 1)]
   importance <- as.data.frame(importance[order(-importance)], optional = T)
-  return(list(trees = trees, oob_error = oob_error, test_error = test_error, importance = importance))
+  return(list(trees = trees, oob_error = oob_error, test_error = test_error, importance = importance, proximities = proximities))
 }
