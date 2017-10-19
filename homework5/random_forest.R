@@ -65,30 +65,16 @@ random_forest <- function(data, ts = 10, feature_count = as.integer(sqrt(ncol(da
         uniq_cols <- unique(feature_selected)
         for (j in uniq_cols) {
           sps <- unique(data[, j])
-          purities <- rep(0L, length(sps))
-          results <- rep(list(NULL), length(sps))
-          i <- 1L
           for (sp in sps) {
             res <- impurify(data, sp, j)
-            purities[i] <- res[["impurify"]]
-            results[[i]] <- res
-            i <- i + 1L
-            # res <- impurify(data, sp, j)
-            # if (min_impurify > res[["impurify"]]) {
-            #   min_impurify <- res[["impurify"]]
-            #   ind <- j
-            #   min_sp <- sp
-            #   left <- res[["left"]]
-            #   right <- res[["right"]]
-            # }
+            if (min_impurify > res[["impurify"]]) {
+              min_impurify <- res[["impurify"]]
+              ind <- j
+              min_sp <- sp
+              left <- res[["left"]]
+              right <- res[["right"]]
+            }
           }
-          min_i <- which.min(purities)
-          min_impurify <- results[[min_i]][["impurify"]]
-          ind <- j
-          min_sp <- results[[min_i]][["sp"]]
-          left <- results[[min_i]][["left"]]
-          right <- results[[min_i]][["right"]]
-
         }
         tree <- list(name = names(data)[ind],
                      ind = ind,
@@ -102,18 +88,18 @@ random_forest <- function(data, ts = 10, feature_count = as.integer(sqrt(ncol(da
   }
   predict_forest <- function(trees, data) {
     vote <- function(trees, x) {
-      sapply(trees, function(tree) predict_tree(tree, x))
+      vapply(trees, function(tree) predict_tree(tree, x), FUN.VALUE = character(1))
     }
     if (length(trees) <= 0) {
       return("NULL")
     }
     N <- nrow(data)
-    sapply(1:N, function(i) marjority(vote(trees, h(data, i))))
+    vapply(1:N, function(i) marjority(vote(trees, h(data, i))), FUN.VALUE = character(1))
   }
 
   predict_tree_in <- function(tree, data) {
     N <- nrow(data)
-    sapply(1:N, function(i) predict_tree(tree, h(data, i)))
+    vapply(1:N, function(i) predict_tree(tree, h(data, i)), FUN.VALUE = character(1))
   }
 
   predict_tree <- function(tree, x) {
@@ -145,7 +131,7 @@ random_forest <- function(data, ts = 10, feature_count = as.integer(sqrt(ncol(da
   # oob_errors <- rep(0, ts)
   oob_matrix <- matrix(rep(0, N * ts), nrow = N)
   importance <- rep(0, M - 1)
-  proximities <- matrix(rep(0, N * N), nrow = N)
+  proximities <- matrix(rep(0L, N * N), nrow = N)
   yt <- rep(0, ts)
   invisible(capture.output(pb <- txtProgressBar(0, 100, width = 80, style = 3)))
   for (i in 1:ts) {
@@ -155,20 +141,20 @@ random_forest <- function(data, ts = 10, feature_count = as.integer(sqrt(ncol(da
     setTxtProgressBar(pb, i/ts * 100)
   }
 
-  oob_error <- sum(sapply(train, function(i) {
+  oob_error <- sum(vapply(train, function(i) {
     predict_forest(trees[oob_matrix[i, ] == 0], h(data, i)) != y[i]
-  }))/length(train)
+  }, FUN.VALUE = logical(1)))/length(train)
 
-  importance <- sapply(1:(M - 1), function(j) {
+  importance <- vapply(1:(M - 1), function(j) {
     data[train, j] <- sample(data[train, j], length(train))
-    oob_error_perm <- sum(sapply(train, function(i) {
+    oob_error_perm <- sum(vapply(train, function(i) {
       predict_forest(trees[oob_matrix[i, ] == 0], h(data, i)) != y[i]
-    }))/length(train)
+    }, FUN.VALUE = double(1)))/length(train)
     abs(oob_error_perm - oob_error)
-  })
+  }, FUN.VALUE = double(1))
 
   predict_matrix <- vapply(trees, function(t) predict_tree_in(t, data), FUN.VALUE = character(N))
-  proximities <- vapply(1:N, function(i, m) colSums(predict_matrix[i,] == m), FUN.VALUE = numeric(N), m = t(predict_matrix))
+  proximities <- vapply(1:N, function(i, m) colSums(predict_matrix[i,] == m), FUN.VALUE = double(N), m = t(predict_matrix))
   test_error <- sum(predict_forest(trees, data[test, ]) != y[test])/length(test)
   names(importance) <- names(data)[1:(M - 1)]
   importance <- as.data.frame(importance[order(-importance)], optional = T)
