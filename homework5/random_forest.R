@@ -16,8 +16,8 @@ random_forest <- function(data, ts = 10, feature_count = as.integer(sqrt(ncol(da
         right <- h(data, data[, j] >= sp)
       }
       N <- nrow(data)
-      impurify <- sum(nrow(left)/N * impurify_one_group(left), nrow(right)/N *
-                        impurify_one_group(right))
+      impurify <- sum(nrow(left) / N * impurify_one_group(left),
+                      nrow(right) / N * impurify_one_group(right))
       list(impurify = impurify, sp = sp, left = left, right = right)
     }
 
@@ -27,12 +27,13 @@ random_forest <- function(data, ts = 10, feature_count = as.integer(sqrt(ncol(da
       }
       y <- data[, ncol(data)]
       N <- nrow(data)
-      clazz <- unique(y)
-      f <- function(c) {
-        p <- sum(y == c)/N
-        p * (1 - p)
-      }
-      sum(sapply(clazz, f))
+      p <- table(y) / N
+      sum(p * (1 - p))
+      # clazz <- unique(y)
+      # sum(vapply(clazz, function(c) {
+      #   p <- sum(y == c) / N
+      #   p * (1 - p)
+      # }, FUN.VALUE = double(1)))
     }
 
     split_branch <- function(data) {
@@ -48,34 +49,51 @@ random_forest <- function(data, ts = 10, feature_count = as.integer(sqrt(ncol(da
       y <- v(data, cols)
 
       clazz <- unique(y)
-      if (nrow(clazz) == 1) {
+      if (nrow(clazz) == 1L) {
         # only one class stop
         return(as.character(clazz[1, 1]))
-      } else if (nrow(unique(X)) == 1) {
+      } else if (nrow(unique(X)) == 1L) {
         # same x stop
         return(marjority(y))
       } else {
-        min_impurify <- 10
-        min_sp <- 0
-        ind <- 0
+        min_impurify <- 10L
+        min_sp <- 0L
+        ind <- 0L
         left <- NULL
         right <- NULL
+        sps <- NULL
         uniq_cols <- unique(feature_selected)
         for (j in uniq_cols) {
           sps <- unique(data[, j])
+          purities <- rep(0L, length(sps))
+          results <- rep(list(NULL), length(sps))
+          i <- 1L
           for (sp in sps) {
             res <- impurify(data, sp, j)
-            if (min_impurify > res[["impurify"]]) {
-              min_impurify <- res[["impurify"]]
-              ind <- j
-              min_sp <- sp
-              left <- res[["left"]]
-              right <- res[["right"]]
-            }
+            purities[i] <- res[["impurify"]]
+            results[[i]] <- res
+            i <- i + 1L
+            # res <- impurify(data, sp, j)
+            # if (min_impurify > res[["impurify"]]) {
+            #   min_impurify <- res[["impurify"]]
+            #   ind <- j
+            #   min_sp <- sp
+            #   left <- res[["left"]]
+            #   right <- res[["right"]]
+            # }
           }
+          min_i <- which.min(purities)
+          min_impurify <- results[[min_i]][["impurify"]]
+          ind <- j
+          min_sp <- results[[min_i]][["sp"]]
+          left <- results[[min_i]][["left"]]
+          right <- results[[min_i]][["right"]]
+
         }
-        # if(nrow(left) == 0 || nrow(right) == 0) { return(marjority(y)) }
-        tree <- list(name = names(data)[ind], ind = ind, sp = min_sp, left = split_branch(left),
+        tree <- list(name = names(data)[ind],
+                     ind = ind,
+                     sp = min_sp,
+                     left = split_branch(left),
                      right = split_branch(right))
       }
       tree
@@ -150,7 +168,7 @@ random_forest <- function(data, ts = 10, feature_count = as.integer(sqrt(ncol(da
   })
 
   predict_matrix <- vapply(trees, function(t) predict_tree_in(t, data), FUN.VALUE = character(N))
-  proximities <- vapply(1:N, function(i) colSums(predict_matrix[i,] == t(predict_matrix)), FUN.VALUE = double(N))
+  proximities <- vapply(1:N, function(i, m) colSums(predict_matrix[i,] == m), FUN.VALUE = numeric(N), m = t(predict_matrix))
   test_error <- sum(predict_forest(trees, data[test, ]) != y[test])/length(test)
   names(importance) <- names(data)[1:(M - 1)]
   importance <- as.data.frame(importance[order(-importance)], optional = T)
