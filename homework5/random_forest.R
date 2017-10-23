@@ -1,7 +1,7 @@
 source("common.R")
 random_forest <- function(data, ts = 10L, feature_count = as.integer(sqrt(ncol(data)))) {
   marjority <- function(v) {
-    ifelse(length(v) <= 0L, "NULL", names(which.max(table(v))))
+    ifelse(length(v) <= 0L, y_type(1), names(which.max(table(v))))
   }
   cart_decision_tree <- function(data, type = "class") {
     impufity <- function(data, sp, j) {
@@ -72,7 +72,7 @@ random_forest <- function(data, ts = 10L, feature_count = as.integer(sqrt(ncol(d
   }
   predict_forest <- function(trees, data) {
     if (length(trees) <= 0L) {
-      return("NOTREE")
+      return(y_type(1))
     }
     N <- nrow(data)
     if (is.null(N) || N == 1L) {
@@ -119,21 +119,19 @@ random_forest <- function(data, ts = 10L, feature_count = as.integer(sqrt(ncol(d
   test <- sample(1:N, as.integer(0.1 * N))
   train <- setdiff(1:N, test)
   y <- data[, M]
-  trees <- rep(list(NULL), ts)
-  oob_matrix <- matrix(F, N, ts)
-  importance <- rep(0L, M - 1)
-  proximities <- matrix(0L, N, N)
+  oob_matrix <- replicate(ts, (function() {
+    a <- rep(F, N)
+    a[sample(train, length(train), replace = T)] <- T
+    a
+  })())
   message("Trainning forest...")
   invisible(capture.output(pb <- txtProgressBar(0, 100, width = 80, style = 3)))
-  for (i in 1:ts) {
-    row_selected <- sample(train, length(train), replace = T)
-    trees[[i]] <- cart_decision_tree(data[row_selected, ])
-    oob_matrix[row_selected, i] <- T
-    setTxtProgressBar(pb, i/ts * 100L)
-  }
-
+  trees <- lapply(1:ts, function(i) {
+    tree <- cart_decision_tree(data[oob_matrix[, i], ])
+    setTxtProgressBar(pb, i / ts * 100L)
+    tree
+  })
   message("\nComputing oob error...")
-
   predict_matrix <- vapply(trees, function(t) predict_tree(t, data), y_type(N))
   oob_error <- sum(vapply(train, function(r) {
     marjority(predict_matrix[r,][!oob_matrix[r, ]])
@@ -151,7 +149,8 @@ random_forest <- function(data, ts = 10L, feature_count = as.integer(sqrt(ncol(d
   message("Computing proximities...")
   proximities <- vapply(1:N, function(i, m) colSums(predict_matrix[i,] == m), FUN.VALUE = double(N), m = t(predict_matrix))
   outliers <- N / colSums(proximities ^ 2)
-  for (i in unique(y)) {
+  uniq_y <- unique(y)
+  for (i in uniq_y) {
     index <- which(y == i)
     sd <- sd(outliers[index])
     if (is.na(sd) || sd == 0L) {
