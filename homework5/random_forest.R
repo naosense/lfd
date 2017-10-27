@@ -1,7 +1,7 @@
 source("common.R")
 random_forest <- function(data, ts = 10L, feature_count = as.integer(sqrt(ncol(data)))) {
   marjority <- function(v) {
-    ifelse(length(v) <= 0L, y_type(1), names(which.max(table(v))))
+    ifelse(length(v) <= 0L, numeric(0), as.integer(names(which.max(table(v)))))
   }
   cart_decision_tree <- function(data, type = "class") {
     impufity <- function(data, sp, j) {
@@ -43,7 +43,7 @@ random_forest <- function(data, ts = 10L, feature_count = as.integer(sqrt(ncol(d
       clazz <- unique(y)
       if (nrow(clazz) == 1L) {
         # only one class stop
-        return(as.character(clazz[1, 1]))
+        return(clazz[1, 1])
       } else if (nrow(unique(X)) == 1L) {
         # same x stop
         return(marjority(y))
@@ -72,14 +72,14 @@ random_forest <- function(data, ts = 10L, feature_count = as.integer(sqrt(ncol(d
   }
   predict_forest <- function(trees, data) {
     if (length(trees) <= 0L) {
-      return(y_type(1))
+      return(0L)
     }
     N <- nrow(data)
     if (is.null(N) || N == 1L) {
-      marjority(vapply(trees, function(t) predict_tree(t, data), y_type(1)))
+      marjority(vapply(trees, function(t) predict_tree(t, data), numeric(1)))
     } else {
-      predict_matrix <- vapply(trees, function(t) predict_tree(t, data), y_type(N))
-      vapply(1:N,function(r) marjority(predict_matrix[r,]), y_type(1))
+      predict_matrix <- vapply(trees, function(t) predict_tree(t, data), numeric(N))
+      vapply(1:N,function(r) marjority(predict_matrix[r,]), numeric(1))
     }
   }
 
@@ -106,15 +106,15 @@ random_forest <- function(data, ts = 10L, feature_count = as.integer(sqrt(ncol(d
     if (is.null(nrow(data)) || nrow(data) == 1L) {
       predict_tree_inner(tree, data)
     } else {
-      vapply(1:nrow(data), function(r) predict_tree_inner(tree, h(data, r)), y_type(1))
+      vapply(1:nrow(data), function(r) predict_tree_inner(tree, h(data, r)), numeric(1))
     }
   }
 
   N <- nrow(data)
   M <- ncol(data)
+  origin_data <- data
   origin_name <- colnames(data)
   type_array <- vapply(1:M, function(c) is.factor(data[1, c]) || is.character(data[1, c]), logical(1))
-  y_type <- ifelse(type_array[M], character, numeric)
   data <- data.matrix(data)
   test <- sample(1:N, as.integer(0.1 * N))
   train <- setdiff(1:N, test)
@@ -132,24 +132,26 @@ random_forest <- function(data, ts = 10L, feature_count = as.integer(sqrt(ncol(d
     tree
   })
   message("\nComputing oob error...")
-  predict_matrix <- vapply(trees, function(t) predict_tree(t, data), y_type(N))
+  predict_matrix <- vapply(trees, function(t) predict_tree(t, data), numeric(N))
   oob_error <- sum(vapply(train, function(r) {
     marjority(predict_matrix[r,][!oob_matrix[r, ]])
-  }, y_type(1)) == y[train]) / length(train)
+  }, numeric(1)) != y[train]) / length(train)
 
   message("Computing feature importance...")
   importance <- vapply(1:(M - 1), function(j) {
     data[train, j] <- sample(data[train, j], length(train))
     oob_error_perm <- sum(vapply(train, function(i) {
       predict_forest(trees[!oob_matrix[i, ]], h(data, i))
-    }, FUN.VALUE = y_type(1)) == y[train]) / length(train)
+    }, numeric(1)) != y[train]) / length(train)
     abs(oob_error_perm - oob_error)
-  }, FUN.VALUE = double(1))
+  }, numeric(1))
 
   message("Computing proximities...")
-  proximities <- vapply(1:N, function(i, m) colSums(predict_matrix[i,] == m), FUN.VALUE = double(N), m = t(predict_matrix))
-  outliers <- N / colSums(proximities ^ 2)
+  proximities <- vapply(1:N, function(i, m) colSums(predict_matrix[i,] == m), numeric(N), m = t(predict_matrix)) / ts
   uniq_y <- unique(y)
+  names(uniq_y) <- uniq_y
+  index_matrix <- vapply(uniq_y, function(i) y == i, logical(N))
+  outliers <- vapply(1:N, function(i) sum(index_matrix[, as.character(y[i])]) / sum(proximities[index_matrix[, as.character(y[i])], i] ^ 2), numeric(1))
   for (i in uniq_y) {
     index <- which(y == i)
     sd <- sd(outliers[index])
@@ -162,5 +164,5 @@ random_forest <- function(data, ts = 10L, feature_count = as.integer(sqrt(ncol(d
   names(importance) <- origin_name[1:(M - 1)]
   importance <- as.data.frame(importance[order(-importance)], optional = T)
   message("Done.")
-  return(list(trees = trees, oob_error = oob_error, test_error = test_error, importance = importance, proximities = proximities, data=data, outliers=outliers))
+  return(list(trees = trees, oob_error = oob_error, test_error = test_error, importance = importance, proximities = proximities, data=origin_data, outliers=outliers))
 }
