@@ -1,7 +1,7 @@
 source("common.R")
 random_forest <- function(data, ts = 10L, feature_count = as.integer(sqrt(ncol(data)))) {
   marjority <- function(v) {
-    ifelse(length(v) <= 0L, numeric(0), as.integer(names(which.max(table(v)))))
+    ifelse(length(v) <= 0L, 0L, as.integer(names(which.max(table(v)))))
   }
   cart_decision_tree <- function(data, type = "class") {
     impufity <- function(data, sp, j) {
@@ -30,7 +30,7 @@ random_forest <- function(data, ts = 10L, feature_count = as.integer(sqrt(ncol(d
 
     split_branch <- function(data) {
       if (nrow(data) == 0L) {
-        return()
+        return(0L)
       }
       rows <- nrow(data)
       cols <- ncol(data)
@@ -43,7 +43,7 @@ random_forest <- function(data, ts = 10L, feature_count = as.integer(sqrt(ncol(d
       clazz <- unique(y)
       if (nrow(clazz) == 1L) {
         # only one class stop
-        return(clazz[1, 1])
+        return(as.integer(clazz[1, 1]))
       } else if (nrow(unique(X)) == 1L) {
         # same x stop
         return(marjority(y))
@@ -59,8 +59,7 @@ random_forest <- function(data, ts = 10L, feature_count = as.integer(sqrt(ncol(d
             }
           }
         }
-        tree <- list(name = names[min_res[["ind"]]],
-                     ind = min_res[["ind"]],
+        tree <- list(ind = min_res[["ind"]],
                      sp = min_res[["sp"]],
                      left = split_branch(min_res[["left"]]),
                      right = split_branch(min_res[["right"]]))
@@ -152,13 +151,21 @@ random_forest <- function(data, ts = 10L, feature_count = as.integer(sqrt(ncol(d
   names(uniq_y) <- uniq_y
   index_matrix <- vapply(uniq_y, function(i) y == i, logical(N))
   outliers <- vapply(1:N, function(i) sum(index_matrix[, as.character(y[i])]) / sum(proximities[index_matrix[, as.character(y[i])], i] ^ 2), numeric(1))
+  scale <- function(v) {
+    if (length(v) <= 0) {
+      return(v)
+    }
+    md <- median(v)
+    sd <- sqrt(sum((v - md) ^ 2) / length(v))
+    (v - md) / sd
+  }
   for (i in uniq_y) {
     index <- which(y == i)
-    sd <- sd(outliers[index])
-    if (is.na(sd) || sd == 0L) {
-      next()
-    }
-    outliers[index] <- (outliers[index] - mean(outliers[index])) / sd
+    # sd <- sd(outliers[index])
+    # if (is.na(sd) || sd == 0L) {
+    #   next()
+    # }
+    outliers[index] <- scale(outliers[index])
   }
   test_error <- sum(predict_forest(trees, data[test, ]) != y[test]) / length(test)
   names(importance) <- origin_name[1:(M - 1)]
