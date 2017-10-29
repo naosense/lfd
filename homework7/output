@@ -43,3 +43,33 @@ sum(predict_forest(forest, houses[, c("region","zone","meters",    "direction", 
 [1] 27418
 > 27418/29790
 [1] 0.920376
+
+ rf <- random_forest(houses[sample(1:29790, 10000),c("region","zone","meters","direction", "con", "floor",  "year","school","subway","tax","num","price")], feature_count = 4, type = "regression")
+Trainning forest...
+  |================================================================================| 100%
+Computing r2
+Done.
+> rf[[2]]
+[1] 0.9632301
+> plot(1:29790, houses[1:29790,"price"])
+> points(1:29790, predict_forest(rf, houses[1:29790,c("region","zone","meters","direction", "con", "floor",  "year","school","subway","tax","num","price")], "regression"), col = "red")
+r2 is 0.859169455454268
+> plot(1:29790, houses[1:29790,"price"] - predict_forest(rf, houses[1:29790,c("region","zone","meters","direction", "con", "floor",  "year","school","subway","tax","num","price")], "regression"))
+r2 is 0.859169455454268
+> yp <- predict_forest(rf, houses[1:29790,c("region","zone","meters","direction", "con", "floor",  "year","school","subway","tax","num","price")], "regression")
+r2 is 0.859169455454268
+> plot(1:29790, houses[1:29790,"price"] - yp / houses[1:29790,"price"])
+> plot(1:29790, (houses[1:29790,"price"] - yp) / houses[1:29790,"price"])
+> c(1,2) / c(2,4)
+[1] 0.5 0.5
+> plot(1:29790, abs(houses[1:29790,"price"] - yp) / houses[1:29790,"price"], main = "House price relative deviation", xlab = "House index", ylab = "Relative deviation")
+> mtext("r2 is 0.859")
+> mtext("r2 is 0.859", side = 1)
+> mtext("r2 is 0.859", side = 2)
+> text(5000, 4, "r2 is 0.859")
+> plot(1:29790, abs(houses[1:29790,"price"] - yp) / houses[1:29790,"price"], main = "House price relative deviation", xlab = "House index", ylab = "Relative deviation")
+> text(1000, 4, "r2 is 0.859")
+> plot(1:29790, abs(houses[1:29790,"price"] - yp) / houses[1:29790,"price"], main = "House price relative deviation", xlab = "House index", ylab = "Relative deviation")
+> text(1000, 4.3, "r2 is 0.859")
+> plot(1:29790, abs(houses[1:29790,"price"] - yp) / houses[1:29790,"price"], main = "House price relative deviation", xlab = "House index", ylab = "Relative deviation")
+> text(2300, 4.3, "r2 is 0.859")
