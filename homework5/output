@@ -1,0 +1,45 @@
+
+
+> forest[2:3]
+$oob_error
+[1] 0.1241
+
+$importance
+                
+con       0.5454
+price     0.3717
+school    0.1132
+year      0.0556
+subway    0.0490
+region    0.0168
+direction 0.0163
+meters    0.0043
+num       0.0040
+zone      0.0026
+floor     0.0007
+tax       0.0007
+
+> forest$data[forest$outliers>10,]
+         region   zone meters direction            con  floor year school subway    tax  num price area
+20417 福成公寓A 3室1厅    135      南北 燕郊城区二手房 低楼层 2004 无学区 无地铁 非免税  405 30000 燕郊
+2739   达观别墅 4室2厅    270      南北 燕郊城区二手房 低楼层 2009 无学区 无地铁 非免税 1600 59260 燕郊
+
+
+
+> forest_10000[2:3]
+$oob_error
+[1] 0.11
+
+$importance
+             
+con    0.5638
+price  0.3812
+school 0.1140
+year   0.0831
+subway 0.0490
+region 0.0254
+
+sum(predict_forest(forest, houses[, c("region","zone","meters",    "direction", "con", "floor",  "year","school","subway","tax","num","price","area")]) == houses[, "area"])
+[1] 27418
+> 27418/29790
+[1] 0.920376

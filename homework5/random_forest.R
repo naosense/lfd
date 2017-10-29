@@ -19,7 +19,7 @@ random_forest <- function(data, ts = 10L, feature_count = as.integer(sqrt(ncol(d
     }
 
     impurity_one_group <- function(data) {
-      if (nrow(data) == 0L) {
+      if (is_empty(data)) {
         return(0L)
       }
       y <- data[, ncol(data)]
@@ -29,7 +29,7 @@ random_forest <- function(data, ts = 10L, feature_count = as.integer(sqrt(ncol(d
     }
 
     split_branch <- function(data) {
-      if (nrow(data) == 0L) {
+      if (is_empty(data)) {
         return(0L)
       }
       rows <- nrow(data)
@@ -66,7 +66,6 @@ random_forest <- function(data, ts = 10L, feature_count = as.integer(sqrt(ncol(d
       }
       tree
     }
-    names <- colnames(data)
     split_branch(data)
   }
   predict_forest <- function(trees, data) {
@@ -114,15 +113,15 @@ random_forest <- function(data, ts = 10L, feature_count = as.integer(sqrt(ncol(d
   origin_data <- data
   origin_name <- colnames(data)
   type_array <- vapply(1:M, function(c) is.factor(data[1, c]) || is.character(data[1, c]), logical(1))
+  # matrix is 3-4 times faster than dataframe
   data <- data.matrix(data)
-  test <- sample(1:N, as.integer(0.1 * N))
-  train <- setdiff(1:N, test)
   y <- data[, M]
   oob_matrix <- replicate(ts, (function() {
     a <- rep(F, N)
-    a[sample(train, length(train), replace = T)] <- T
+    a[sample(1:N, N, replace = T)] <- T
     a
   })())
+
   message("Trainning forest...")
   invisible(capture.output(pb <- txtProgressBar(0, 100, width = 80, style = 3)))
   trees <- lapply(1:ts, function(i) {
@@ -130,46 +129,89 @@ random_forest <- function(data, ts = 10L, feature_count = as.integer(sqrt(ncol(d
     setTxtProgressBar(pb, i / ts * 100L)
     tree
   })
+
   message("\nComputing oob error...")
   predict_matrix <- vapply(trees, function(t) predict_tree(t, data), numeric(N))
-  oob_error <- sum(vapply(train, function(r) {
+  oob_error <- sum(vapply(1:N, function(r) {
     marjority(predict_matrix[r,][!oob_matrix[r, ]])
-  }, numeric(1)) != y[train]) / length(train)
+  }, numeric(1)) != y) / N
 
   message("Computing feature importance...")
   importance <- vapply(1:(M - 1), function(j) {
-    data[train, j] <- sample(data[train, j], length(train))
-    oob_error_perm <- sum(vapply(train, function(i) {
+    data[, j] <- sample(data[, j], N)
+    oob_error_perm <- sum(vapply(1:N, function(i) {
       predict_forest(trees[!oob_matrix[i, ]], h(data, i))
-    }, numeric(1)) != y[train]) / length(train)
+    }, numeric(1)) != y) / N
     abs(oob_error_perm - oob_error)
   }, numeric(1))
+  names(importance) <- origin_name[1:(M - 1)]
+  importance <- as.data.frame(importance[order(-importance)], optional = T)
 
   message("Computing proximities...")
   proximities <- vapply(1:N, function(i, m) colSums(predict_matrix[i,] == m), numeric(N), m = t(predict_matrix)) / ts
+
+  message("Computing outliers...")
   uniq_y <- unique(y)
   names(uniq_y) <- uniq_y
   index_matrix <- vapply(uniq_y, function(i) y == i, logical(N))
   outliers <- vapply(1:N, function(i) sum(index_matrix[, as.character(y[i])]) / sum(proximities[index_matrix[, as.character(y[i])], i] ^ 2), numeric(1))
-  scale <- function(v) {
-    if (length(v) <= 0) {
-      return(v)
-    }
-    md <- median(v)
-    sd <- sqrt(sum((v - md) ^ 2) / length(v))
-    (v - md) / sd
-  }
   for (i in uniq_y) {
     index <- which(y == i)
-    # sd <- sd(outliers[index])
-    # if (is.na(sd) || sd == 0L) {
-    #   next()
-    # }
-    outliers[index] <- scale(outliers[index])
+    outliers[index] <- normlize(outliers[index], median)
   }
-  test_error <- sum(predict_forest(trees, data[test, ]) != y[test]) / length(test)
-  names(importance) <- origin_name[1:(M - 1)]
-  importance <- as.data.frame(importance[order(-importance)], optional = T)
   message("Done.")
-  return(list(trees = trees, oob_error = oob_error, test_error = test_error, importance = importance, proximities = proximities, data=origin_data, outliers=outliers))
+  return(list(trees = trees, oob_error = oob_error, importance = importance, proximities = proximities, data=origin_data, outliers=outliers))
+}
+
+predict_forest <- function(rf, data) {
+  predict_tree <- function(tree, data) {
+    predict_tree_inner <- function(tree, x) {
+      if (is.atomic(tree)) {
+        return(tree)
+      } else {
+        if (type_array[tree[["ind"]]]) {
+          if (x[tree[["ind"]]] == tree[["sp"]]) {
+            return(predict_tree_inner(tree[["left"]], x))
+          } else {
+            return(predict_tree_inner(tree[["right"]], x))
+          }
+        } else {
+          if (x[tree[["ind"]]] < tree[["sp"]]) {
+            return(predict_tree_inner(tree[["left"]], x))
+          } else {
+            return(predict_tree_inner(tree[["right"]], x))
+          }
+        }
+      }
+    }
+    if (is.null(nrow(data)) || nrow(data) == 1L) {
+      predict_tree_inner(tree, data)
+    } else {
+      vapply(1:nrow(data), function(r) predict_tree_inner(tree, h(data, r)), numeric(1))
+    }
+  }
+
+  origin_data <- rf[["data"]]
+  trees <- rf[["trees"]]
+  stopifnot(identical(names(origin_data), names(data)))
+  if (length(trees) <= 0L) {
+    return(0L)
+  }
+  N <- nrow(data)
+  M <- ncol(data)
+  ylevel <- levels(data[, M])
+  type_array <- vapply(1:M, function(c) is.factor(data[1, c]) || is.character(data[1, c]), logical(1))
+  data <- data.matrix(data)
+  yint <- 0L
+  if (is.null(N) || N == 1L) {
+    yint <- marjority(vapply(trees, function(t) predict_tree(t, data), numeric(1)))
+  } else {
+    predict_matrix <- vapply(trees, function(t) predict_tree(t, data), numeric(N))
+    yint <- vapply(1:N,function(r) marjority(predict_matrix[r,]), numeric(1))
+  }
+  if (type_array[M]) {
+    ylevel[yint]
+  } else {
+    yint
+  }
 }

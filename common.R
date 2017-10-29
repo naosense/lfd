@@ -52,3 +52,20 @@ plot_fit <- function(f, x, y, fit = T, formula = T, ...) {
     mtext(parse(text = paste("hat(y)==", er)), adj = 0.2, line = -2)
   }
 }
+
+is_empty <- function(x) {
+  ifelse(is.null(dim(x)), length(x) <= 0, prod(dim(x)) <= 0)
+}
+
+normlize <- function(v, center = mean) {
+  if (is_empty(v)) {
+    return(v)
+  }
+  md <- center(v)
+  sd <- sqrt(sum((v - md) ^ 2) / length(v))
+  if (sd == 0) {
+    v - md
+  } else {
+    (v - md) / sd
+  }
+}
