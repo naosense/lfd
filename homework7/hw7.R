@@ -40,8 +40,8 @@ message("\nEin is ", ein)
 eout <- sum(predict_tree(tree, hw7_test) != hw7_test[, ncol(hw7_test)]) / nrow(hw7_test)
 message("Eout is ", eout)
 
-rf <- random_forest(hw7_train, 30000, 2)
-message("Forest ein is ", rf[["oob_erro"]])
+rf <- random_forest(hw7_train, 3000, 2)
+message("Forest ein is ", rf[["oob_error"]])
 eout <- sum(predict_forest(rf, hw7_test) != hw7_test[, ncol(hw7_test)]) / nrow(hw7_test)
 message("Forest eout is ", eout)
 
