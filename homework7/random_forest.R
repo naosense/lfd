@@ -251,9 +251,10 @@ predict_forest <- function(rf, data, type = "class", origin = F) {
 }
 
 plot_decision_boundary <- function(model, data, predict_fun, title, ...) {
+  ylevel <- levels(data[, 3])
   data <- data.matrix(data)
   plot(data[, 1:2], main = title, pch = data[, 3], col = colors[data[, 3]])
-  legend("topright", c("setosa", "versicolor", "virginica"), pch = c(1,2,3), col = colors[1:3])
+  legend("topright", ylevel, pch = c(1,2,3), col = colors[1:3])
 
   rangex <- range(data[, 1])
   rangey <- range(data[, 2])
@@ -262,8 +263,9 @@ plot_decision_boundary <- function(model, data, predict_fun, title, ...) {
   yg <- seq.int(rangey[1], rangey[2], length.out = 100)
   grid <- expand.grid(xg, yg, 0)
   names(grid) <- colnames(data)
-  clazz <- predict_fun(model, grid, ...)
+  grid[, 3] <- predict_fun(model, grid, ...)
+  points(grid[, 1:2], col = colors[grid[, 3]], pch = ".")
 
-  z <- matrix(clazz, nrow = 100)
-  contour(xg, yg, z, add = T, drawlabels = F, lwd = 2, levels = 1.5:2.5)
+  z <- matrix(grid[, 3], nrow = 100)
+  contour(xg, yg, z, add = T, drawlabels = F, levels = 1.5:2.5, lwd = 2)
 }
