@@ -67,7 +67,7 @@ cart_decision_tree <- function(data, type = "class") {
   structure(split_branch(data), origin_name = origin_name, data_levels = data_levels, type_array = type_array)
 }
 
-predict_tree <- function(tree, data) {
+predict_tree <- function(tree, data, origin = F) {
   predict_tree_inner <- function(tree, x) {
     if (is.atomic(tree)) {
       return(tree)
@@ -99,7 +99,7 @@ predict_tree <- function(tree, data) {
   } else {
     yint <- vapply(1:nrow(data), function(r) predict_tree_inner(tree, h(data, r)), numeric(1))
   }
-  if (type_array[length(type_array)]) {
+  if (!origin && type_array[length(type_array)]) {
     ylevel[yint]
   } else {
     yint

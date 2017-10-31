@@ -185,7 +185,7 @@ random_forest <- function(data, ts = 10L, feature_count = as.integer(sqrt(ncol(d
   }
 }
 
-predict_forest <- function(rf, data, type = "class") {
+predict_forest <- function(rf, data, type = "class", origin = F) {
   predict_tree <- function(tree, data) {
     predict_tree_inner <- function(tree, x) {
       if (is.atomic(tree)) {
@@ -229,7 +229,7 @@ predict_forest <- function(rf, data, type = "class") {
       predict_matrix <- vapply(trees, function(t) predict_tree(t, data), numeric(N))
       ypred <- vapply(1:N,function(r) marjority(predict_matrix[r,]), numeric(1))
     }
-    if (type_array[M]) {
+    if (!origin && type_array[M]) {
       ylevel[ypred]
     } else {
       ypred
@@ -248,4 +248,22 @@ predict_forest <- function(rf, data, type = "class") {
     message("r2 is ", r2)
     ypred
   }
+}
+
+plot_decision_boundary <- function(model, data, predict_fun, title, ...) {
+  data <- data.matrix(data)
+  plot(data[, 1:2], main = title, pch = data[, 3], col = colors[data[, 3]])
+  legend("topright", c("setosa", "versicolor", "virginica"), pch = c(1,2,3), col = colors[1:3])
+
+  rangex <- range(data[, 1])
+  rangey <- range(data[, 2])
+
+  xg <- seq.int(rangex[1], rangex[2], length.out = 100)
+  yg <- seq.int(rangey[1], rangey[2], length.out = 100)
+  grid <- expand.grid(xg, yg, 0)
+  names(grid) <- colnames(data)
+  clazz <- predict_fun(model, grid, ...)
+
+  z <- matrix(clazz, nrow = 100)
+  contour(xg, yg, z, add = T, drawlabels = F, lwd = 2, levels = 1.5:2.5)
 }
