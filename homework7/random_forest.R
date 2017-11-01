@@ -12,9 +12,20 @@ random_forest <- function(data, ts = 10L, feature_count = as.integer(sqrt(ncol(d
       }
       left <- h(data, left_cond)
       right <- h(data, !left_cond)
-      N <- nrow(data)
-      impufity <- sum(nrow(left) / N * impurity_one_group(left),
-                      nrow(right) / N * impurity_one_group(right))
+      # Sepal.Length Sepal.Width Species
+      # [1,]          5.6         2.5       2
+      # [2,]          5.7         2.8       2
+      # [3,]          5.7         2.5       3
+      # [4,]          5.6         2.8       3
+      impufity <- 0L
+      if (is_empty(left) || is_empty(right)) {
+        impufity <- Inf
+      } else {
+        N <- nrow(data)
+        impufity <- sum(nrow(left) / N * impurity_one_group(left),
+                        nrow(right) / N * impurity_one_group(right))
+      }
+
       list(impufity = impufity, ind = j, sp = sp, left = left, right = right)
     }
 
@@ -35,6 +46,7 @@ random_forest <- function(data, ts = 10L, feature_count = as.integer(sqrt(ncol(d
     }
 
     split_branch <- function(data) {
+      # print(data)
       if (is_empty(data)) {
         return(0L)
       }
@@ -67,6 +79,7 @@ random_forest <- function(data, ts = 10L, feature_count = as.integer(sqrt(ncol(d
             }
           }
         }
+
         tree <- list(ind = min_res[["ind"]],
                      sp = min_res[["sp"]],
                      left = split_branch(min_res[["left"]]),
