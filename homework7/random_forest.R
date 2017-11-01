@@ -1,8 +1,5 @@
 source("common.R")
-random_forest <- function(data, ts = 10L, feature_count = as.integer(sqrt(ncol(data))), type = "class") {
-  marjority <- function(v) {
-    ifelse(length(v) <= 0L, 0L, as.integer(names(which.max(table(v)))))
-  }
+random_forest <- function(data, ts = 10L, feature_count = floor(sqrt(ncol(data))), type = "class", node_size = 1) {
   cart_decision_tree <- function(data, type = "class") {
     impufity <- function(data, sp, j) {
       if (type_array[j]) {
@@ -38,7 +35,7 @@ random_forest <- function(data, ts = 10L, feature_count = as.integer(sqrt(ncol(d
       if (type == "class") {
         p <- table(y) / N
         sum(p * (1 - p))
-      } else if(type == "regression") {
+      } else if (type == "regression") {
         sum((y - mean(y)) ^ 2) / N
       } else {
         return(0L)
@@ -59,13 +56,14 @@ random_forest <- function(data, ts = 10L, feature_count = as.integer(sqrt(ncol(d
       y <- v(data, cols)
 
 
-      if (type == "class" && nrow(clazz <- unique(y)) == 1L) {
-        # only one class stop
-        return(as.integer(clazz[1, 1]))
-      } else if (type == "class" && nrow(unique(X)) == 1L) {
+      # if (type == "class" && nrow(clazz <- unique(y)) == 1L) {
+      #   # only one class stop
+      #   return(as.integer(clazz[1, 1]))
+      # } else
+      if (type == "class" && (nrow(y) <= node_size || nrow(unique(X)) == 1L)) {
         # same x stop
         return(marjority(y))
-      } else if (type == "regression" && length(y) <= 5) {
+      } else if (type == "regression" && length(y) <= node_size) {
         return(mean(y))
       } else {
         min_res <- list(impufity = Inf, ind = 0L, sp = 0L, left = NULL, right = NULL)
@@ -187,14 +185,14 @@ random_forest <- function(data, ts = 10L, feature_count = as.integer(sqrt(ncol(d
       outliers[index] <- normlize(outliers[index], median)
     }
     message("Done.")
-    list(trees = trees, oob_error = oob_error, importance = importance, proximities = proximities, data=origin_data, outliers=outliers)
+    list(trees = trees, oob_error = oob_error, importance = importance, proximities = proximities, data = origin_data, outliers = outliers)
   } else if (type == "regression") {
     message("\nComputing r2")
     tss <- sum((y - mean(y)) ^ 2)
     rss <- sum((y - predict_forest(trees, data)) ^ 2)
     r2 <- 1 - rss / tss
     message("Done.")
-    list(trees = trees, r2 = r2, data=origin_data)
+    list(trees = trees, r2 = r2, data = origin_data)
   }
 }
 

@@ -1,5 +1,5 @@
 source("common.R")
-cart_decision_tree <- function(data, type = "class") {
+cart_decision_tree <- function(data, type = "class", node_size = 1) {
   impufity <- function(data, sp, j) {
     if (type_array[j]) {
       left_cond <- data[, j] == sp
@@ -8,9 +8,16 @@ cart_decision_tree <- function(data, type = "class") {
     }
     left <- h(data, left_cond)
     right <- h(data, !left_cond)
-    N <- nrow(data)
-    impufity <- sum(nrow(left) / N * impurity_one_group(left),
-                    nrow(right) / N * impurity_one_group(right))
+
+    impufity <- 0L
+    if (is_empty(left) || is_empty(right)) {
+      impufity <- Inf
+    } else {
+      N <- nrow(data)
+      impufity <- sum(nrow(left) / N * impurity_one_group(left),
+                      nrow(right) / N * impurity_one_group(right))
+    }
+
     list(impufity = impufity, ind = j, sp = sp, left = left, right = right)
   }
 
@@ -34,11 +41,13 @@ cart_decision_tree <- function(data, type = "class") {
     X <- v(data, 1:(cols - 1))
     y <- v(data, cols)
 
-    clazz <- unique(y)
-    if (nrow(clazz) == 1L) {
-      # only one class stop
-      return(as.integer(clazz[1, 1]))
-    } else if (nrow(unique(X)) == 1L) {
+    # clazz <- unique(y)
+    # if (nrow(clazz) == 1L) {
+    #   # only one class stop
+    #   return(as.integer(clazz[1, 1]))
+    # } else
+
+      if ((nrow(y) <= node_size || nrow(unique(X)) == 1L)) {
       # same x stop
       return(marjority(y))
     } else {

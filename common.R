@@ -54,7 +54,7 @@ plot_fit <- function(f, x, y, fit = T, formula = T, ...) {
 }
 
 is_empty <- function(x) {
-  ifelse(is.null(dim(x)), length(x) <= 0, prod(dim(x)) <= 0)
+  ifelse(is.null(dim(x)), length(x) <= 0L, prod(dim(x)) <= 0L)
 }
 
 normlize <- function(v, center = mean) {
@@ -68,4 +68,8 @@ normlize <- function(v, center = mean) {
   } else {
     (v - md) / sd
   }
+}
+
+marjority <- function(v) {
+  ifelse(length(v) <= 0L, 0L, as.integer(names(which.max(table(v)))))
 }
