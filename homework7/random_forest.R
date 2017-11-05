@@ -1,14 +1,16 @@
 source("common.R")
-random_forest <- function(data, ts = 10L, feature_count = floor(sqrt(ncol(data))), type = "class", node_size = 1) {
+random_forest <- function(data, type = "class", ts = 10L, feature_count = floor(sqrt(ncol(data))), node_size = NULL) {
   cart_decision_tree <- function(data, type = "class") {
-    impufity <- function(data, sp, j) {
+    impufity <- function(rows, sp, j) {
+      left_index <- 0L
       if (type_array[j]) {
-        left_cond <- data[, j] == sp
+        left_index <- which(data[rows, j] == sp)
       } else {
-        left_cond <- data[, j] < sp
+        left_index <- which(data[rows, j] < sp)
       }
-      left <- h(data, left_cond)
-      right <- h(data, !left_cond)
+      left <- rows[left_index]
+      right <- rows[-left_index]
+
       # Sepal.Length Sepal.Width Species
       # [1,]          5.6         2.5       2
       # [2,]          5.7         2.8       2
@@ -18,20 +20,20 @@ random_forest <- function(data, ts = 10L, feature_count = floor(sqrt(ncol(data))
       if (is_empty(left) || is_empty(right)) {
         impufity <- Inf
       } else {
-        N <- nrow(data)
-        impufity <- sum(nrow(left) / N * impurity_one_group(left),
-                        nrow(right) / N * impurity_one_group(right))
+        N <- length(rows)
+        impufity <- sum(length(left) / N * impurity_one_group(left),
+                        length(right) / N * impurity_one_group(right))
       }
 
       list(impufity = impufity, ind = j, sp = sp, left = left, right = right)
     }
 
-    impurity_one_group <- function(data) {
-      if (is_empty(data)) {
+    impurity_one_group <- function(rows) {
+      if (is_empty(rows)) {
         return(0L)
       }
-      y <- data[, ncol(data)]
-      N <- nrow(data)
+      y <- data[rows, ncol(data)]
+      N <- length(rows)
       if (type == "class") {
         p <- table(y) / N
         sum(p * (1 - p))
@@ -42,26 +44,20 @@ random_forest <- function(data, ts = 10L, feature_count = floor(sqrt(ncol(data))
       }
     }
 
-    split_branch <- function(data) {
-      # print(data)
-      if (is_empty(data)) {
+    split_branch <- function(rows) {
+      # print(rows)
+      if (is_empty(rows)) {
         return(0L)
       }
-      rows <- nrow(data)
-      cols <- ncol(data)
+      # rows <- nrow(data)
+      ncol <- ncol(data)
 
-      feature_selected <- sample(1:(cols - 1), feature_count, replace = T)
+      feature_selected <- sample(1:(ncol - 1), feature_count, replace = T)
 
-      X <- v(data, feature_selected)
-      y <- v(data, cols)
+      X <- data[rows, feature_selected, drop = F]
+      y <- data[rows, ncol, drop = F]
 
-
-      # if (type == "class" && nrow(clazz <- unique(y)) == 1L) {
-      #   # only one class stop
-      #   return(as.integer(clazz[1, 1]))
-      # } else
-      if (type == "class" && (nrow(y) <= node_size || nrow(unique(X)) == 1L)) {
-        # same x stop
+      if (type == "class" && ((!is.null(node_size) && nrow(y) <= node_size) || is_same(y) || is_same(X))) {
         return(marjority(y))
       } else if (type == "regression" && length(y) <= node_size) {
         return(mean(y))
@@ -69,9 +65,9 @@ random_forest <- function(data, ts = 10L, feature_count = floor(sqrt(ncol(data))
         min_res <- list(impufity = Inf, ind = 0L, sp = 0L, left = NULL, right = NULL)
         uniq_cols <- unique(feature_selected)
         for (j in uniq_cols) {
-          sps <- unique(data[, j])
+          sps <- unique(data[rows, j])
           for (sp in sps) {
-            res <- impufity(data, sp, j)
+            res <- impufity(rows, sp, j)
             if (min_res[["impufity"]] > res[["impufity"]]) {
               min_res <- res
             }
@@ -85,10 +81,10 @@ random_forest <- function(data, ts = 10L, feature_count = floor(sqrt(ncol(data))
       }
       tree
     }
-    split_branch(data)
+    split_branch(1:nrow(data))
   }
   predict_forest <- function(trees, data) {
-    if (length(trees) <= 0L) {
+    if (is_empty(trees)) {
       return(0L)
     }
     N <- nrow(data)
@@ -188,9 +184,7 @@ random_forest <- function(data, ts = 10L, feature_count = floor(sqrt(ncol(data))
     list(trees = trees, oob_error = oob_error, importance = importance, proximities = proximities, data = origin_data, outliers = outliers)
   } else if (type == "regression") {
     message("\nComputing r2")
-    tss <- sum((y - mean(y)) ^ 2)
-    rss <- sum((y - predict_forest(trees, data)) ^ 2)
-    r2 <- 1 - rss / tss
+    r2 <- rsquare(y, predict_forest(trees, data))
     message("Done.")
     list(trees = trees, r2 = r2, data = origin_data)
   }
@@ -223,7 +217,7 @@ predict_forest <- function(rf, data, type = "class", origin = F) {
   origin_data <- rf[["data"]]
   trees <- rf[["trees"]]
   stopifnot(identical(names(origin_data), names(data)))
-  if (length(trees) <= 0L) {
+  if (is_empty(trees)) {
     return(0L)
   }
   N <- nrow(data)
@@ -253,19 +247,23 @@ predict_forest <- function(rf, data, type = "class", origin = F) {
       ypred <- rowMeans(predict_matrix)
     }
     y <- data[, M]
-    tss <- sum((y - mean(y)) ^ 2)
-    rss <- sum((y - ypred) ^ 2)
-    r2 <- 1 - rss / tss
+    r2 <- rsquare(y - ypred)
     message("r2 is ", r2)
     ypred
   }
 }
 
 plot_decision_boundary <- function(model, data, predict_fun, title, ...) {
-  ylevel <- levels(data[, 3])
+  ylevel <- NULL
+  if (is.factor(data[, 3])) {
+    ylevel <- levels(data[, 3])
+  } else {
+    ylevel <- unique(data[, 3])
+  }
+  nlevel <- length(ylevel)
   data <- data.matrix(data)
   plot(data[, 1:2], main = title, pch = data[, 3], col = colors[data[, 3]])
-  legend("topright", ylevel, pch = c(1,2,3), col = colors[1:3])
+  legend("topleft", ylevel, pch = 1:nlevel, col = colors[1:nlevel], bty = "n")
 
   rangex <- range(data[, 1])
   rangey <- range(data[, 2])
@@ -278,5 +276,5 @@ plot_decision_boundary <- function(model, data, predict_fun, title, ...) {
   points(grid[, 1:2], col = colors[grid[, 3]], pch = ".")
 
   z <- matrix(grid[, 3], nrow = 100)
-  contour(xg, yg, z, add = T, drawlabels = F, levels = 1.5:2.5, lwd = 2)
+  contour(xg, yg, z, add = T, drawlabels = F, levels = 1:(nlevel - 1) + .5, lwd = 2)
 }

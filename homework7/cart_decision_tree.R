@@ -1,62 +1,67 @@
 source("common.R")
-cart_decision_tree <- function(data, type = "class", node_size = 1) {
-  impufity <- function(data, sp, j) {
+cart_decision_tree <- function(data, type = "class", node_size = NULL) {
+  impufity <- function(rows, sp, j) {
+    left_index <- 0L
     if (type_array[j]) {
-      left_cond <- data[, j] == sp
+      left_index <- which(data[rows, j] == sp)
     } else {
-      left_cond <- data[, j] < sp
+      left_index <- which(data[rows, j] < sp)
     }
-    left <- h(data, left_cond)
-    right <- h(data, !left_cond)
+    left <- rows[left_index]
+    right <- rows[-left_index]
 
+    # Sepal.Length Sepal.Width Species
+    # [1,]          5.6         2.5       2
+    # [2,]          5.7         2.8       2
+    # [3,]          5.7         2.5       3
+    # [4,]          5.6         2.8       3
     impufity <- 0L
     if (is_empty(left) || is_empty(right)) {
       impufity <- Inf
     } else {
-      N <- nrow(data)
-      impufity <- sum(nrow(left) / N * impurity_one_group(left),
-                      nrow(right) / N * impurity_one_group(right))
+      N <- length(rows)
+      impufity <- sum(length(left) / N * impurity_one_group(left),
+                      length(right) / N * impurity_one_group(right))
     }
 
     list(impufity = impufity, ind = j, sp = sp, left = left, right = right)
   }
 
-  impurity_one_group <- function(data) {
-    if (is_empty(data)) {
+  impurity_one_group <- function(rows) {
+    if (is_empty(rows)) {
       return(0L)
     }
-    y <- data[, ncol(data)]
-    N <- nrow(data)
-    p <- table(y) / N
-    sum(p * (1 - p))
+    y <- data[rows, ncol(data)]
+    N <- length(rows)
+    if (type == "class") {
+      p <- table(y) / N
+      sum(p * (1 - p))
+    } else if (type == "regression") {
+      sum((y - mean(y)) ^ 2) / N
+    } else {
+      return(0L)
+    }
   }
 
-  split_branch <- function(data) {
-    if (is_empty(data)) {
+  split_branch <- function(rows) {
+    if (is_empty(rows)) {
       return(0L)
     }
-    rows <- nrow(data)
-    cols <- ncol(data)
 
-    X <- v(data, 1:(cols - 1))
-    y <- v(data, cols)
+    ncol <- ncol(data)
 
-    # clazz <- unique(y)
-    # if (nrow(clazz) == 1L) {
-    #   # only one class stop
-    #   return(as.integer(clazz[1, 1]))
-    # } else
+    X <- data[rows, 1:(ncol - 1), drop = F]
+    y <- data[rows, ncol, drop = F]
 
-      if ((nrow(y) <= node_size || nrow(unique(X)) == 1L)) {
-      # same x stop
+    if (((!is.null(node_size) && nrow(y) <= node_size) || is_same(y) || is_same(X))) {
       return(marjority(y))
     } else {
-      min_res <- list(impufity = 10L, ind = 0L, sp = 0L, left = NULL, right = NULL)
+      min_res <- list(impufity = Inf, ind = 0L, sp = 0L, left = NULL, right = NULL)
 
-      for (j in 1:(cols - 1)) {
-        sps <- unique(data[, j])
+      for (j in 1:(ncol - 1)) {
+        sps <- unique(data[rows, j])
         for (sp in sps) {
-          res <- impufity(data, sp, j)
+          res <- impufity(rows, sp, j)
           if (min_res[["impufity"]] > res[["impufity"]]) {
             min_res <- res
           }
@@ -73,7 +78,7 @@ cart_decision_tree <- function(data, type = "class", node_size = 1) {
   data_levels <- lapply(1:ncol(data), function(i) levels(data[, i]))
   type_array <- vapply(1:ncol(data), function(c) is.factor(data[1, c]) || is.character(data[1, c]), logical(1))
   data <- data.matrix(data)
-  structure(split_branch(data), origin_name = origin_name, data_levels = data_levels, type_array = type_array)
+  structure(split_branch(1:nrow(data)), origin_name = origin_name, data_levels = data_levels, type_array = type_array)
 }
 
 predict_tree <- function(tree, data, origin = F) {

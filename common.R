@@ -73,3 +73,30 @@ normlize <- function(v, center = mean) {
 marjority <- function(v) {
   ifelse(length(v) <= 0L, 0L, as.integer(names(which.max(table(v)))))
 }
+
+is_same <- function(x) {
+  ifelse(is.null(dim(x)), length(unique(x)) == 1L, nrow(unique(x)) == 1L)
+}
+
+rsquare <- function(y, pred) {
+  tss <- sum((y - mean(y)) ^ 2)
+  rss <- sum((y - pred) ^ 2)
+  r2 <- 1 - rss / tss
+}
+
+cross_validate <- function(data, train_fun, predict_fun, n = 10, ...) {
+  ein <- rep(0, n)
+  eout <- rep(0, n)
+  N <- nrow(data)
+  nsamples <- seq.int(0, nrow(data), length.out = n + 1)
+  for (i in 1:n) {
+    train_data <- data[-((nsamples[i] + 1):nsamples[i + 1]),]
+    test_data <- data[(nsamples[i] + 1):nsamples[i + 1],]
+    model <- train_fun(train_data, ...)
+    pred_train <- predict_fun(model, train_data)
+    pred_test <- predict_fun(model, test_data)
+    ein[i] <- sum(pred_train != train_data[, ncol(train_data)]) / nrow(train_data)
+    eout[i] <- sum(pred_test != test_data[, ncol(test_data)]) / nrow(test_data)
+  }
+  c(mean(ein), mean(eout))
+}
