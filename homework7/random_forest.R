@@ -81,6 +81,7 @@ random_forest <- function(data, type = "class", ts = 10L, feature_count = floor(
       }
       tree
     }
+    data <- unique(data)
     split_branch(1:nrow(data))
   }
   predict_forest <- function(trees, data) {

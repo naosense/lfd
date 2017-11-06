@@ -77,7 +77,7 @@ cart_decision_tree <- function(data, type = "class", node_size = NULL) {
   origin_name <- colnames(data)
   data_levels <- lapply(1:ncol(data), function(i) levels(data[, i]))
   type_array <- vapply(1:ncol(data), function(c) is.factor(data[1, c]) || is.character(data[1, c]), logical(1))
-  data <- data.matrix(data)
+  data <- unique(data.matrix(data))
   structure(split_branch(1:nrow(data)), origin_name = origin_name, data_levels = data_levels, type_array = type_array)
 }
 
