@@ -85,18 +85,20 @@ rsquare <- function(y, pred) {
 }
 
 cross_validate <- function(data, train_fun, predict_fun, n = 10, ...) {
-  ein <- rep(0, n)
-  eout <- rep(0, n)
   N <- nrow(data)
   nsamples <- seq.int(0, nrow(data), length.out = n + 1)
-  for (i in 1:n) {
+  cat(nsamples, "\n")
+  invisible(capture.output(pb <- txtProgressBar(0, 100, width = 80, style = 3)))
+  err <- vapply(1:n, function(i) {
     train_data <- data[-((nsamples[i] + 1):nsamples[i + 1]),]
     test_data <- data[(nsamples[i] + 1):nsamples[i + 1],]
     model <- train_fun(train_data, ...)
     pred_train <- predict_fun(model, train_data)
     pred_test <- predict_fun(model, test_data)
-    ein[i] <- sum(pred_train != train_data[, ncol(train_data)]) / nrow(train_data)
-    eout[i] <- sum(pred_test != test_data[, ncol(test_data)]) / nrow(test_data)
-  }
-  c(mean(ein), mean(eout))
+    ein <- sum(pred_train != train_data[, ncol(train_data)]) / nrow(train_data)
+    eout <- sum(pred_test != test_data[, ncol(test_data)]) / nrow(test_data)
+    setTxtProgressBar(pb, i / n * 100L)
+    c(ein, eout)
+  }, numeric(2))
+  rowMeans(err)
 }
