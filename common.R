@@ -99,12 +99,10 @@ cross_validate <- function(data, train_fun, predict_fun, n = 10, type = "class",
     if (type == "class") {
       ein <- sum(pred_train != train_data[, ncol(train_data)]) / nrow(train_data)
       eout <- sum(pred_test != test_data[, ncol(test_data)]) / nrow(test_data)
-      message("r2in:",ein, " out:", eout)
       c(ein, eout)
     } else if (type == "regression") {
       r2in <- rsquare(train_data[, ncol(train_data)], pred_train)
       r2out  <- rsquare(test_data[, ncol(test_data)], pred_test)
-      message("r2in:",r2in, " out:", r2out)
       c(r2in, r2out)
     }
   }, numeric(2))

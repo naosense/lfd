@@ -86,7 +86,7 @@ random_forest <- function(data, type = "class", ts = 10L, feature_count = floor(
   }
   predict_forest <- function(trees, data) {
     if (is_empty(trees)) {
-      return(0L)
+      return(ifelse(type == "class", 0L, NA))
     }
     N <- nrow(data)
     if (type == "class") {
@@ -185,9 +185,26 @@ random_forest <- function(data, type = "class", ts = 10L, feature_count = floor(
     list(trees = trees, oob_error = oob_error, importance = importance, proximities = proximities, data = origin_data, outliers = outliers)
   } else if (type == "regression") {
     message("\nComputing r2")
-    r2 <- rsquare(y, predict_forest(trees, data))
+    ypred <- vapply(1:N, function(r) {
+      predict_forest(trees[!oob_matrix[r, ]], h(data, r))
+    }, numeric(1))
+    ypred[is.na(ypred)] <- mean(ypred, na.rm = T)
+    r2 <- rsquare(y, ypred)
+
+    message("Computing feature importance...")
+    importance <- vapply(1:(M - 1), function(j) {
+      data[, j] <- sample(data[, j], N)
+      ypred <- vapply(1:N, function(i) {
+        predict_forest(trees[!oob_matrix[i, ]], h(data, i))
+      }, numeric(1))
+      ypred[is.na(ypred)] <- mean(ypred, na.rm = T)
+      r2_perm <- rsquare(y, ypred)
+      abs(r2 - r2_perm)
+    }, numeric(1))
+    names(importance) <- origin_name[1:(M - 1)]
+    importance <- as.data.frame(importance[order(-importance)], optional = T)
     message("Done.")
-    list(trees = trees, r2 = r2, data = origin_data)
+    list(trees = trees, r2 = r2, importance = importance, data = origin_data)
   }
 }
 
