@@ -58,9 +58,7 @@ random_forest <- function(data, type = "class", ts = 10L, feature_count = floor(
       y <- data[rows, ncol, drop = F]
 
       if (type == "class" && (nrow(y) <= node_size || is_same(y) || is_same(X))) {
-        return(marjority(y))
-      } else if (type == "regression" && length(y) <= node_size) {
-        return(mean(y))
+        return(ifelse(type == "class", marjority(y), mean(y)))
       } else {
         min_res <- list(impufity = Inf, ind = 0L, sp = 0L, left = NULL, right = NULL)
         uniq_cols <- unique(feature_selected)
