@@ -84,21 +84,29 @@ rsquare <- function(y, pred) {
   r2 <- 1 - rss / tss
 }
 
-cross_validate <- function(data, train_fun, predict_fun, n = 10, ...) {
+cross_validate <- function(data, train_fun, predict_fun, n = 10, type = "class", ...) {
   N <- nrow(data)
   nsamples <- seq.int(0, nrow(data), length.out = n + 1)
-  cat(nsamples, "\n")
+  cat("\nSections is", nsamples, "\n")
   invisible(capture.output(pb <- txtProgressBar(0, 100, width = 80, style = 3)))
   err <- vapply(1:n, function(i) {
     train_data <- data[-((nsamples[i] + 1):nsamples[i + 1]),]
     test_data <- data[(nsamples[i] + 1):nsamples[i + 1],]
-    model <- train_fun(train_data, ...)
+    model <- train_fun(train_data, type = type, ...)
     pred_train <- predict_fun(model, train_data)
     pred_test <- predict_fun(model, test_data)
-    ein <- sum(pred_train != train_data[, ncol(train_data)]) / nrow(train_data)
-    eout <- sum(pred_test != test_data[, ncol(test_data)]) / nrow(test_data)
     setTxtProgressBar(pb, i / n * 100L)
-    c(ein, eout)
+    if (type == "class") {
+      ein <- sum(pred_train != train_data[, ncol(train_data)]) / nrow(train_data)
+      eout <- sum(pred_test != test_data[, ncol(test_data)]) / nrow(test_data)
+      message("r2in:",ein, " out:", eout)
+      c(ein, eout)
+    } else if (type == "regression") {
+      r2in <- rsquare(train_data[, ncol(train_data)], pred_train)
+      r2out  <- rsquare(test_data[, ncol(test_data)], pred_test)
+      message("r2in:",r2in, " out:", r2out)
+      c(r2in, r2out)
+    }
   }, numeric(2))
   rowMeans(err)
 }

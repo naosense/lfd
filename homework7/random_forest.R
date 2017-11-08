@@ -1,5 +1,5 @@
 source("common.R")
-random_forest <- function(data, type = "class", ts = 10L, feature_count = floor(sqrt(ncol(data))), node_size = NULL) {
+random_forest <- function(data, type = "class", ts = 10L, feature_count = floor(sqrt(ncol(data))), node_size = 1) {
   cart_decision_tree <- function(data, type = "class") {
     impufity <- function(rows, sp, j) {
       left_index <- 0L
@@ -57,7 +57,7 @@ random_forest <- function(data, type = "class", ts = 10L, feature_count = floor(
       X <- data[rows, feature_selected, drop = F]
       y <- data[rows, ncol, drop = F]
 
-      if (type == "class" && ((!is.null(node_size) && nrow(y) <= node_size) || is_same(y) || is_same(X))) {
+      if (type == "class" && (nrow(y) <= node_size || is_same(y) || is_same(X))) {
         return(marjority(y))
       } else if (type == "regression" && length(y) <= node_size) {
         return(mean(y))

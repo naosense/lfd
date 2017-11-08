@@ -1,5 +1,5 @@
 source("common.R")
-cart_decision_tree <- function(data, type = "class", node_size = NULL) {
+cart_decision_tree <- function(data, type = "class", node_size = 1) {
   impufity <- function(rows, sp, j) {
     left_index <- 0L
     if (type_array[j]) {
@@ -53,8 +53,8 @@ cart_decision_tree <- function(data, type = "class", node_size = NULL) {
     X <- data[rows, 1:(ncol - 1), drop = F]
     y <- data[rows, ncol, drop = F]
 
-    if (((!is.null(node_size) && nrow(y) <= node_size) || is_same(y) || is_same(X))) {
-      return(marjority(y))
+    if ((nrow(y) <= node_size || is_same(y) || is_same(X))) {
+      return(ifelse(type == "class", marjority(y), mean(y)))
     } else {
       min_res <- list(impufity = Inf, ind = 0L, sp = 0L, left = NULL, right = NULL)
 
