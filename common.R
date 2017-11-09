@@ -86,25 +86,55 @@ rsquare <- function(y, pred) {
 
 cross_validate <- function(data, train_fun, predict_fun, n = 10, type = "class", ...) {
   N <- nrow(data)
-  nsamples <- seq.int(0, nrow(data), length.out = n + 1)
-  cat("\nSections is", nsamples, "\n")
-  invisible(capture.output(pb <- txtProgressBar(0, 100, width = 80, style = 3)))
+  data <- data[sample(N),]
+  sections <- seq.int(0, nrow(data), length.out = n + 1)
+  cat("Sections is", sections, "\n")
   err <- vapply(1:n, function(i) {
-    train_data <- data[-((nsamples[i] + 1):nsamples[i + 1]),]
-    test_data <- data[(nsamples[i] + 1):nsamples[i + 1],]
+    train_data <- data[-((sections[i] + 1):sections[i + 1]),]
+    test_data <- data[(sections[i] + 1):sections[i + 1],]
     model <- train_fun(train_data, type = type, ...)
     pred_train <- predict_fun(model, train_data)
     pred_test <- predict_fun(model, test_data)
-    setTxtProgressBar(pb, i / n * 100L)
     if (type == "class") {
       ein <- sum(pred_train != train_data[, ncol(train_data)]) / nrow(train_data)
       eout <- sum(pred_test != test_data[, ncol(test_data)]) / nrow(test_data)
-      c(ein, eout)
+      res <- c(ein, eout)
+      cat(paste0("#", i), "Error is", res, "\n")
+      res
     } else if (type == "regression") {
       r2in <- rsquare(train_data[, ncol(train_data)], pred_train)
       r2out  <- rsquare(test_data[, ncol(test_data)], pred_test)
-      c(r2in, r2out)
+      res <- c(r2in, r2out)
+      cat(paste0("#", i), "R2 is", res, "\n")
+      res
     }
   }, numeric(2))
   rowMeans(err)
 }
+
+plot_decision_boundary <- function(model, data, predict_fun, title, ...) {
+  ylevel <- NULL
+  if (is.factor(data[, 3])) {
+    ylevel <- levels(data[, 3])
+  } else {
+    ylevel <- unique(data[, 3])
+  }
+  nlevel <- length(ylevel)
+  data <- data.matrix(data)
+  plot(data[, 1:2], main = title, pch = data[, 3], col = colors[data[, 3]])
+  legend("topleft", ylevel, pch = 1:nlevel, col = colors[1:nlevel], bty = "n")
+
+  rangex <- range(data[, 1])
+  rangey <- range(data[, 2])
+
+  xg <- seq.int(rangex[1], rangex[2], length.out = 100)
+  yg <- seq.int(rangey[1], rangey[2], length.out = 100)
+  grid <- expand.grid(xg, yg, 0)
+  names(grid) <- colnames(data)
+  grid[, 3] <- predict_fun(model, grid, ...)
+  points(grid[, 1:2], col = colors[grid[, 3]], pch = ".")
+
+  z <- matrix(grid[, 3], nrow = 100)
+  contour(xg, yg, z, add = T, drawlabels = F, levels = 1:(nlevel - 1) + .5, lwd = 2)
+}
+

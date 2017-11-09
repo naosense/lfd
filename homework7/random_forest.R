@@ -57,7 +57,7 @@ random_forest <- function(data, type = "class", ts = 10L, feature_count = floor(
       X <- data[rows, feature_selected, drop = F]
       y <- data[rows, ncol, drop = F]
 
-      if (type == "class" && (nrow(y) <= node_size || is_same(y) || is_same(X))) {
+      if (nrow(y) <= node_size || is_same(y) || is_same(X)) {
         return(ifelse(type == "class", marjority(y), mean(y)))
       } else {
         min_res <- list(impufity = Inf, ind = 0L, sp = 0L, left = NULL, right = NULL)
@@ -267,30 +267,4 @@ predict_forest <- function(rf, data, type = "class", origin = F) {
     message("r2 is ", r2)
     ypred
   }
-}
-
-plot_decision_boundary <- function(model, data, predict_fun, title, ...) {
-  ylevel <- NULL
-  if (is.factor(data[, 3])) {
-    ylevel <- levels(data[, 3])
-  } else {
-    ylevel <- unique(data[, 3])
-  }
-  nlevel <- length(ylevel)
-  data <- data.matrix(data)
-  plot(data[, 1:2], main = title, pch = data[, 3], col = colors[data[, 3]])
-  legend("topleft", ylevel, pch = 1:nlevel, col = colors[1:nlevel], bty = "n")
-
-  rangex <- range(data[, 1])
-  rangey <- range(data[, 2])
-
-  xg <- seq.int(rangex[1], rangex[2], length.out = 100)
-  yg <- seq.int(rangey[1], rangey[2], length.out = 100)
-  grid <- expand.grid(xg, yg, 0)
-  names(grid) <- colnames(data)
-  grid[, 3] <- predict_fun(model, grid, ...)
-  points(grid[, 1:2], col = colors[grid[, 3]], pch = ".")
-
-  z <- matrix(grid[, 3], nrow = 100)
-  contour(xg, yg, z, add = T, drawlabels = F, levels = 1:(nlevel - 1) + .5, lwd = 2)
 }
