@@ -177,7 +177,7 @@ random_forest <- function(data, type = "class", ts = 10L, feature_count = floor(
     outliers <- vapply(1:N, function(i) sum(index_matrix[, as.character(y[i])]) / sum(proximities[index_matrix[, as.character(y[i])], i] ^ 2), numeric(1))
     for (i in uniq_y) {
       index <- which(y == i)
-      outliers[index] <- normlize(outliers[index], median)
+      outliers[index] <- normlize(outliers[index])
     }
     message("Done.")
     list(trees = trees, oob_error = oob_error, importance = importance, proximities = proximities, data = origin_data, outliers = outliers)
@@ -186,8 +186,8 @@ random_forest <- function(data, type = "class", ts = 10L, feature_count = floor(
     ypred <- vapply(1:N, function(r) {
       predict_forest(trees[!oob_matrix[r, ]], h(data, r))
     }, numeric(1))
-    ypred[is.na(ypred)] <- mean(ypred, na.rm = T)
-    r2 <- rsquare(y, ypred)
+    # ypred[is.na(ypred)] <- mean(ypred, na.rm = T)
+    r2 <- rsquare(y[!is.na(ypred)], ypred[!is.na(ypred)])
 
     message("Computing feature importance...")
     importance <- vapply(1:(M - 1), function(j) {
@@ -195,8 +195,8 @@ random_forest <- function(data, type = "class", ts = 10L, feature_count = floor(
       ypred <- vapply(1:N, function(i) {
         predict_forest(trees[!oob_matrix[i, ]], h(data, i))
       }, numeric(1))
-      ypred[is.na(ypred)] <- mean(ypred, na.rm = T)
-      r2_perm <- rsquare(y, ypred)
+      # ypred[is.na(ypred)] <- mean(ypred, na.rm = T)
+      r2_perm <- rsquare(y[!is.na(ypred)], ypred[!is.na(ypred)])
       abs(r2 - r2_perm)
     }, numeric(1))
     names(importance) <- origin_name[1:(M - 1)]
@@ -257,13 +257,13 @@ predict_forest <- function(rf, data, type = "class", origin = F) {
     }
   } else if (type == "regression") {
     if (N == 1L) {
-      ypredm <- ean(vapply(trees, function(t) predict_tree(t, data), numeric(1)))
+      ypredm <- mean(vapply(trees, function(t) predict_tree(t, data), numeric(1)))
     } else {
       predict_matrix <- vapply(trees, function(t) predict_tree(t, data), numeric(N))
       ypred <- rowMeans(predict_matrix)
     }
     y <- data[, M]
-    r2 <- rsquare(y - ypred)
+    r2 <- rsquare(y, ypred)
     message("r2 is ", r2)
     ypred
   }

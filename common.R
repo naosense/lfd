@@ -112,7 +112,7 @@ cross_validate <- function(data, train_fun, predict_fun, n = 10, type = "class",
   rowMeans(err)
 }
 
-plot_decision_boundary <- function(model, data, predict_fun, title, ...) {
+plot_decision_boundary <- function(model, data, predict_fun, title, legend = T, bg = T, ...) {
   ylevel <- NULL
   if (is.factor(data[, 3])) {
     ylevel <- levels(data[, 3])
@@ -122,7 +122,9 @@ plot_decision_boundary <- function(model, data, predict_fun, title, ...) {
   nlevel <- length(ylevel)
   data <- data.matrix(data)
   plot(data[, 1:2], main = title, pch = data[, 3], col = colors[data[, 3]])
-  legend("topleft", ylevel, pch = 1:nlevel, col = colors[1:nlevel], bty = "n")
+  if (legend) {
+    legend("topleft", ylevel, pch = 1:nlevel, col = colors[1:nlevel], bty = "n")
+  }
 
   rangex <- range(data[, 1])
   rangey <- range(data[, 2])
@@ -132,7 +134,9 @@ plot_decision_boundary <- function(model, data, predict_fun, title, ...) {
   grid <- expand.grid(xg, yg, 0)
   names(grid) <- colnames(data)
   grid[, 3] <- predict_fun(model, grid, ...)
-  points(grid[, 1:2], col = colors[grid[, 3]], pch = ".")
+  if (bg) {
+    points(grid[, 1:2], col = colors[grid[, 3]], pch = ".")
+  }
 
   z <- matrix(grid[, 3], nrow = 100)
   contour(xg, yg, z, add = T, drawlabels = F, levels = 1:(nlevel - 1) + .5, lwd = 2)
