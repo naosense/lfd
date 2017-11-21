@@ -52,7 +52,7 @@ random_forest <- function(data, type = "class", ts = 10L, feature_count = floor(
       # rows <- nrow(data)
       ncol <- ncol(data)
 
-      feature_selected <- sample(1:(ncol - 1), feature_count, replace = T)
+      feature_selected <- sample(ncol - 1, feature_count, replace = T)
 
       X <- data[rows, feature_selected, drop = F]
       y <- data[rows, ncol, drop = F]
@@ -137,7 +137,7 @@ random_forest <- function(data, type = "class", ts = 10L, feature_count = floor(
   y <- data[, M]
   oob_matrix <- replicate(ts, (function() {
     a <- rep(F, N)
-    a[sample(1:N, N, replace = T)] <- T
+    a[sample(N, replace = T)] <- T
     a
   })())
 
@@ -158,7 +158,7 @@ random_forest <- function(data, type = "class", ts = 10L, feature_count = floor(
 
     message("Computing feature importance...")
     importance <- vapply(1:(M - 1), function(j) {
-      data[, j] <- sample(data[, j], N)
+      data[, j] <- sample(data[, j])
       oob_error_perm <- sum(vapply(1:N, function(i) {
         predict_forest(trees[!oob_matrix[i, ]], h(data, i))
       }, numeric(1)) != y) / N
@@ -191,7 +191,7 @@ random_forest <- function(data, type = "class", ts = 10L, feature_count = floor(
 
     message("Computing feature importance...")
     importance <- vapply(1:(M - 1), function(j) {
-      data[, j] <- sample(data[, j], N)
+      data[, j] <- sample(data[, j])
       ypred <- vapply(1:N, function(i) {
         predict_forest(trees[!oob_matrix[i, ]], h(data, i))
       }, numeric(1))
