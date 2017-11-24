@@ -1,5 +1,7 @@
 source("common.R")
-random_forest <- function(data, type = "class", ts = 10L, feature_count = floor(sqrt(ncol(data))), node_size = 1) {
+random_forest <- function(data, type = "class", ts = 10L,
+                          feature_count = floor(ifelse(type == "class", sqrt(ncol(data)), ncol(data) / 3)),
+                          node_size = ifelse(type == "class", 1, 5)) {
   cart_decision_tree <- function(data, type = "class") {
     impufity <- function(rows, sp, j) {
       left_index <- 0L
@@ -21,6 +23,7 @@ random_forest <- function(data, type = "class", ts = 10L, feature_count = floor(
         impufity <- Inf
       } else {
         N <- length(rows)
+
         impufity <- sum(length(left) / N * impurity_one_group(left),
                         length(right) / N * impurity_one_group(right))
       }
@@ -79,7 +82,6 @@ random_forest <- function(data, type = "class", ts = 10L, feature_count = floor(
       }
       tree
     }
-    data <- unique(data)
     split_branch(1:nrow(data))
   }
   predict_forest <- function(trees, data) {
@@ -127,6 +129,8 @@ random_forest <- function(data, type = "class", ts = 10L, feature_count = floor(
     vapply(1:nrow(data), function(r) predict_tree_inner(tree, h(data, r)), numeric(1))
   }
 
+  stopifnot(type == "class" || type == "regression", ts > 0, node_size > 0)
+
   N <- nrow(data)
   M <- ncol(data)
   origin_data <- data
@@ -144,7 +148,7 @@ random_forest <- function(data, type = "class", ts = 10L, feature_count = floor(
   message("Trainning forest...")
   invisible(capture.output(pb <- txtProgressBar(0, 100, width = 80, style = 3)))
   trees <- lapply(1:ts, function(i) {
-    tree <- cart_decision_tree(data[oob_matrix[, i], ])
+    tree <- cart_decision_tree(data[oob_matrix[, i], ], type)
     setTxtProgressBar(pb, i / ts * 100L)
     tree
   })
@@ -257,7 +261,7 @@ predict_forest <- function(rf, data, type = "class", origin = F) {
     }
   } else if (type == "regression") {
     if (N == 1L) {
-      ypredm <- mean(vapply(trees, function(t) predict_tree(t, data), numeric(1)))
+      ypred <- mean(vapply(trees, function(t) predict_tree(t, data), numeric(1)))
     } else {
       predict_matrix <- vapply(trees, function(t) predict_tree(t, data), numeric(N))
       ypred <- rowMeans(predict_matrix)
